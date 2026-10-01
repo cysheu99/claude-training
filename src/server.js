@@ -47,6 +47,23 @@ app.post("/tickets", (req, res) => {
   res.status(201).json(ticket);
 });
 
+app.get("/tickets", (req, res) => {
+  res.json(tickets);
+});
+
+app.get("/tickets/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const ticket = tickets.find((ticket) => ticket.id === id);
+
+  if (!ticket) {
+    return res.status(404).json({
+      error: "Ticket not found"
+    });
+  }
+
+  res.json(ticket);
+});
+
 
 const PORT = 3000;
 
