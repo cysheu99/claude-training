@@ -111,3 +111,32 @@ describe("GET /tickets/:id", () => {
     expect(response.body).toEqual({ error: "Ticket not found" });
   });
 });
+
+describe("POST /tickets/:id/analyze", () => {
+  it("returns an analysis for an existing ticket", async () => {
+    const created = await request(app)
+      .post("/tickets")
+      .send({
+        title: "Cannot log in",
+        description: "Password reset failed"
+      });
+
+    const response = await request(app)
+      .post(`/tickets/${created.body.id}/analyze`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      summary: "Cannot log in: Password reset failed",
+      category: "account access",
+      urgency: "medium",
+      suggestedAction: "Verify the account and help the requester restore access."
+    });
+  });
+
+  it("returns 404 when the ticket does not exist", async () => {
+    const response = await request(app).post("/tickets/999/analyze");
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: "Ticket not found" });
+  });
+});

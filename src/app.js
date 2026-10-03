@@ -1,4 +1,5 @@
 import express from "express";
+import { analyzeTicket } from "./claude.js";
 
 export function createApp() {
   const app = express();
@@ -63,6 +64,20 @@ export function createApp() {
     }
 
     res.json(ticket);
+  });
+
+  app.post("/tickets/:id/analyze", async (req, res) => {
+    const id = Number(req.params.id);
+    const ticket = tickets.find((ticket) => ticket.id === id);
+
+    if (!ticket) {
+      return res.status(404).json({
+        error: "Ticket not found"
+      });
+    }
+
+    const analysis = await analyzeTicket(ticket);
+    res.json(analysis);
   });
 
   return app;
