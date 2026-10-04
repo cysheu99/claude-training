@@ -1,7 +1,7 @@
 import express from "express";
 import { analyzeTicket } from "./claude.js";
 
-export function createApp() {
+export function createApp(analyzer = analyzeTicket) {
   const app = express();
 
   app.use(express.json());
@@ -76,8 +76,14 @@ export function createApp() {
       });
     }
 
-    const analysis = await analyzeTicket(ticket);
-    res.json(analysis);
+    try {
+      const analysis = await analyzer(ticket);
+      res.json(analysis);
+    } catch (_error) {
+      res.status(500).json({
+        error: "Ticket analysis failed"
+      });
+    }
   });
 
   return app;

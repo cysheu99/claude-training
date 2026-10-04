@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
 
@@ -113,6 +113,20 @@ describe("GET /tickets/:id", () => {
 });
 
 describe("POST /tickets/:id/analyze", () => {
+  const fakeAnalysis = {
+    summary: "Deterministic test summary",
+    category: "test category",
+    urgency: "low",
+    suggestedAction: "Test action"
+  };
+
+  let fakeAnalyzer;
+
+  beforeEach(() => {
+    fakeAnalyzer = vi.fn(async (_ticket) => fakeAnalysis);
+    app = createApp(fakeAnalyzer);
+  });
+
   it("returns an analysis for an existing ticket", async () => {
     const created = await request(app)
       .post("/tickets")
@@ -125,12 +139,9 @@ describe("POST /tickets/:id/analyze", () => {
       .post(`/tickets/${created.body.id}/analyze`);
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({
-      summary: "Cannot log in: Password reset failed",
-      category: "account access",
-      urgency: "medium",
-      suggestedAction: "Verify the account and help the requester restore access."
-    });
+    expect(response.body).toEqual(fakeAnalysis);
+    expect(fakeAnalyzer).toHaveBeenCalledOnce();
+    expect(fakeAnalyzer).toHaveBeenCalledWith(created.body);
   });
 
   it("returns 404 when the ticket does not exist", async () => {
@@ -138,5 +149,22 @@ describe("POST /tickets/:id/analyze", () => {
 
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ error: "Ticket not found" });
+    expect(fakeAnalyzer).not.toHaveBeenCalled();
+  });
+
+  it("returns a safe error when analysis fails", async () => {
+    fakeAnalyzer.mockRejectedValue(new Error("Analyzer unavailable"));
+    const created = await request(app)
+      .post("/tickets")
+      .send({
+        title: "Cannot log in",
+        description: "Password reset failed"
+      });
+
+    const response = await request(app)
+      .post(`/tickets/${created.body.id}/analyze`);
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ error: "Ticket analysis failed" });
   });
 });
