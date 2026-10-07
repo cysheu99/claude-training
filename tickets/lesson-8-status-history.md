@@ -31,6 +31,8 @@ Requirements:
 4. Update the ticket's status.
 5. Return the updated ticket with HTTP 200.
 6. Record status changes in memory.
+7. If the requested status matches the ticket's current status, return the
+   unchanged ticket with HTTP 200 and do not create a history record.
 
 ## Feature 2: Status History
 
@@ -76,4 +78,3 @@ Example:
 - Preserve the analyzer dependency-injection design.
 - Do not change comment functionality.
 - Add automated tests.
-
