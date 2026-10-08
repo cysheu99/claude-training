@@ -60,9 +60,82 @@ describe("POST /tickets", () => {
 
     expect(response.body).toEqual([]);
   });
+
+  it("defaults severity to medium", async () => {
+    const response = await request(app)
+      .post("/tickets")
+      .send({ title: "Title", description: "Details" });
+
+    expect(response.status).toBe(201);
+    expect(response.body.severity).toBe("medium");
+  });
+
+  it.each(["low", "medium", "high", "critical"])(
+    "accepts severity %s",
+    async (severity) => {
+      const response = await request(app)
+        .post("/tickets")
+        .send({ title: "Title", description: "Details", severity });
+
+      expect(response.status).toBe(201);
+      expect(response.body.severity).toBe(severity);
+    }
+  );
+
+  it.each([
+    ["unknown value", "urgent"],
+    ["wrong case", "HIGH"],
+    ["non-string", 123],
+    ["null", null]
+  ])("rejects invalid severity: %s", async (_label, severity) => {
+    const response = await request(app)
+      .post("/tickets")
+      .send({ title: "Title", description: "Details", severity });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: "Invalid severity" });
+
+    const list = await request(app).get("/tickets");
+    expect(list.body).toEqual([]);
+  });
 });
 
 describe("GET /tickets", () => {
+  it("filters tickets by severity", async () => {
+    await request(app)
+      .post("/tickets")
+      .send({ title: "Low", description: "One", severity: "low" });
+    const high = await request(app)
+      .post("/tickets")
+      .send({ title: "High", description: "Two", severity: "high" });
+    await request(app)
+      .post("/tickets")
+      .send({ title: "Default", description: "Three" });
+
+    const response = await request(app).get("/tickets?severity=high");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([high.body]);
+  });
+
+  it("returns an empty list when no tickets match the severity", async () => {
+    await request(app)
+      .post("/tickets")
+      .send({ title: "Title", description: "Details" });
+
+    const response = await request(app).get("/tickets?severity=critical");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([]);
+  });
+
+  it("rejects an invalid severity filter", async () => {
+    const response = await request(app).get("/tickets?severity=urgent");
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: "Invalid severity" });
+  });
+
   it("returns an empty list when there are no tickets", async () => {
     const response = await request(app).get("/tickets");
 

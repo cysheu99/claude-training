@@ -12,6 +12,7 @@ export function createApp(analyzer = analyzeTicket) {
   let nextCommentId = 1;
   const statusHistory = [];
   let nextHistoryId = 1;
+  const allowedSeverities = ["low", "medium", "high", "critical"];
 
   app.get("/", (req, res) => {
     res.json({
@@ -33,7 +34,7 @@ export function createApp(analyzer = analyzeTicket) {
   });
 
   app.post("/tickets", (req, res) => {
-    const { title, description } = req.body ?? {};
+    const { title, description, severity = "medium" } = req.body ?? {};
 
     if (typeof title !== "string" || title.trim() === "" ||
         typeof description !== "string" || description.trim() === "") {
@@ -42,11 +43,18 @@ export function createApp(analyzer = analyzeTicket) {
       });
     }
 
+    if (!allowedSeverities.includes(severity)) {
+      return res.status(400).json({
+        error: "Invalid severity"
+      });
+    }
+
     const ticket = {
       id: nextId++,
       title,
       description,
-      status: "open"
+      status: "open",
+      severity
     };
 
     tickets.push(ticket);
@@ -54,7 +62,19 @@ export function createApp(analyzer = analyzeTicket) {
   });
 
   app.get("/tickets", (req, res) => {
-    res.json(tickets);
+    const { severity } = req.query;
+
+    if (severity === undefined) {
+      return res.json(tickets);
+    }
+
+    if (!allowedSeverities.includes(severity)) {
+      return res.status(400).json({
+        error: "Invalid severity"
+      });
+    }
+
+    res.json(tickets.filter((ticket) => ticket.severity === severity));
   });
 
   app.get("/tickets/:id", (req, res) => {
